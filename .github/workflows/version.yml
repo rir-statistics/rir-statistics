@@ -24,4 +24,4 @@ jobs:
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git config user.name github-actions[bot]
           npm version prerelease --preid "p$(date -u +%Y%m%d)"
-          git push --follow-tags git@github.com:${{ github.repository }}.git
+          git push --follow-tags
