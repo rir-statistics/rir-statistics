@@ -33,7 +33,7 @@
   "devDependencies": {
     "date-fns": "^2.28.0",
     "exponential-backoff": "^3.1.0",
-    "node-fetch": "^3.2.6",
+    "node-fetch": "^3.2.9",
     "sqlite3": "^5.0.8"
   }
 }
