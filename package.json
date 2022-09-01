@@ -28,7 +28,7 @@
   },
   "type": "module",
   "scripts": {
-    "build": "node -- index.js || NODE_TLS_REJECT_UNAUTHORIZED=0 node -- index.js"
+    "build": "node -- index.js"
   },
   "devDependencies": {
     "date-fns": "^2.29.2",
