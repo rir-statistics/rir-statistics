@@ -1,7 +1,7 @@
 {
   "private": true,
   "name": "rir-statistics",
-  "version": "1.0.0-p20230415.13",
+  "version": "1.0.0-p20230415.14",
   "description": "Regional Internet Registry statistics",
   "keywords": [
     "rir",
