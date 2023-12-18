@@ -1,15 +1,13 @@
 import fs from 'fs'
 import path from 'path'
 import child_process from 'child_process'
-import dateFns from 'date-fns'
+import { parseISO, formatISO } from 'date-fns'
 import exponentialBackOff from 'exponential-backoff'
 import fetch from 'node-fetch'
 import sqlite3 from 'sqlite3'
 import config from './config.js'
 
 const { backOff } = exponentialBackOff
-
-const { parseISO, formatISO } = dateFns
 
 const formatDate = (date) => date === null || date === '00000000'
   ? '1970-01-01'
