@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import child_process from 'child_process'
-import dateFns from 'date-fns'
+import { parseISO, formatISO } from 'date-fns'
 import exponentialBackOff from 'exponential-backoff'
 import fetch from 'node-fetch'
 import sqlite3 from 'sqlite3'
@@ -9,18 +9,18 @@ import config from './config.js'
 
 const { backOff } = exponentialBackOff
 
-const { parseISO, formatISO } = dateFns
-
 const formatDate = (date) => date === null || date === '00000000'
   ? '1970-01-01'
   : formatISO(parseISO(date), { representation: 'date' })
 
 const fetchStats = async (urls, db) => {
   const stats = (await Promise.all((await Promise.all(urls.map(url => backOff(async () => {
+    console.log(`Downloadeding ${url}`);
     const response = await fetch(url)
     if (!response.ok) {
       throw response
     }
+    console.log(`Downloaded ${url}`);
     return response
   }))))
     .sort((a, b) => new Date(a.headers.get('Last-Modified')) - new Date(b.headers.get('Last-Modified')))
