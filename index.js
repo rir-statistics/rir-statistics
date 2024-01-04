@@ -1,26 +1,51 @@
 import fs from 'fs'
 import path from 'path'
 import child_process from 'child_process'
-import { parseISO, formatISO } from 'date-fns'
+import { parseISO, formatISO, startOfTomorrow, startOfToday, startOfYesterday } from 'date-fns'
 import exponentialBackOff from 'exponential-backoff'
-import fetch from 'node-fetch'
 import sqlite3 from 'sqlite3'
 import config from './config.js'
 
 const { backOff } = exponentialBackOff
 
-const formatDate = (date) => date === null || date === '00000000'
-  ? '1970-01-01'
-  : formatISO(parseISO(date), { representation: 'date' })
+const formatBasicDate = (date) =>
+  formatISO(date, { format: 'basic', representation: 'date' })
 
-const fetchStats = async (urls, db) => {
-  const stats = (await Promise.all((await Promise.all(urls.map(url => backOff(async () => {
-    const response = await fetch(url)
-    if (!response.ok) {
-      throw response
+const formatExtendedDateString = (date) => date === null || date === '00000000'
+  ? '1970-01-01'
+  : formatISO(parseISO(date), { format: 'extended', representation: 'date' })
+
+const fetchURL = async (url) => {
+  console.log('==> Fetching', url)
+  const response = await fetch(url)
+  if (!response.ok) {
+    throw response
+  }
+  return response
+}
+
+const fetchStats = async (url) => {
+  try {
+    return await backOff(() => fetchURL(url), { numOfAttempts: 3 })
+  } catch (error) {
+    const urls = [
+      url.replace('latest', formatBasicDate(startOfTomorrow())),
+      url.replace('latest', formatBasicDate(startOfToday())),
+      url.replace('latest', formatBasicDate(startOfYesterday()))
+    ]
+
+    for (const url of urls) {
+      try {
+        return await backOff(() => fetchURL(url), { numOfAttempts: 3 })
+      } catch (ignored) {}
     }
-    return response
-  }))))
+
+    throw error
+  }
+}
+
+const fetchAllStats = async (urls, db) => {
+  const stats = (await Promise.all((await Promise.all(urls.map(fetchStats)))
     .sort((a, b) => new Date(a.headers.get('Last-Modified')) - new Date(b.headers.get('Last-Modified')))
     .map(async response => {
       const [version, ...content] = (await response.text())
@@ -31,15 +56,15 @@ const fetchStats = async (urls, db) => {
       const summary = content.slice(0, index)
       const records = content.slice(index)
 
-      version[4] = formatDate(version[4])
-      version[5] = formatDate(version[5])
+      version[4] = formatExtendedDateString(version[4])
+      version[5] = formatExtendedDateString(version[5])
 
       records.forEach(record => {
         while (record.length < 8) {
           record.push(null)
         }
         if (record[5] !== null) {
-          record[5] = formatDate(record[5])
+          record[5] = formatExtendedDateString(record[5])
         }
       })
 
@@ -125,7 +150,7 @@ const main = async () => {
   const filename = config.dest + '.db'
   fs.existsSync(filename) && fs.unlinkSync(filename)
   const db = new sqlite3.Database(filename)
-  await fetchStats(config.source, db)
+  await fetchAllStats(config.source, db)
   db.close()
 
   await new Promise(async (resolve, reject) => {
