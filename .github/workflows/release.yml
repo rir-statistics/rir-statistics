@@ -57,7 +57,7 @@ jobs:
           gzip dist/delegated-registry-extended-latest.sql
 
       - name: Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: |
             dist/delegated-registry-extended-latest.sql.gz
