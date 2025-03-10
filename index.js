@@ -1,10 +1,13 @@
-import fs from 'fs'
-import path from 'path'
-import child_process from 'child_process'
+import fs from 'node:fs'
+import net from 'node:net'
+import path from 'node:path'
+import child_process from 'node:child_process'
 import { parseISO, formatISO, startOfTomorrow, startOfToday, startOfYesterday } from 'date-fns'
 import exponentialBackOff from 'exponential-backoff'
 import sqlite3 from 'sqlite3'
 import config from './config.js'
+
+net.setDefaultAutoSelectFamilyAttemptTimeout(1000)
 
 const { backOff } = exponentialBackOff
 
