@@ -57,7 +57,6 @@ jobs:
           gzip dist/delegated-registry-extended-latest.sql
 
       - name: Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            dist/delegated-registry-extended-latest.sql.gz
+        run: gh release create ${{ github.ref_name }} dist/delegated-registry-extended-latest.sql.gz --repo ${{ github.repository }}
+        env:
+          GH_TOKEN: ${{ github.token }}
