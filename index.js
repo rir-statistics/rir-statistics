@@ -2,9 +2,10 @@ import fs from 'node:fs'
 import net from 'node:net'
 import path from 'node:path'
 import child_process from 'node:child_process'
+import { DatabaseSync } from 'node:sqlite'
+
 import { parseISO, formatISO, startOfTomorrow, startOfToday, startOfYesterday } from 'date-fns'
 import exponentialBackOff from 'exponential-backoff'
-import sqlite3 from 'sqlite3'
 import config from './config.js'
 
 net.setDefaultAutoSelectFamilyAttemptTimeout(1000)
@@ -93,14 +94,11 @@ const fetchAllStats = async (urls, db) => {
     return 0
   })
 
-  return new Promise(resolve => {
-    db.serialize(function () {
-      db.exec('PRAGMA foreign_keys = ON')
-      db.exec('BEGIN TRANSACTION')
+  db.exec('BEGIN TRANSACTION');
 
-      const tables = [
-        {
-          schema: `CREATE TABLE version (
+  const tables = [
+    {
+      schema: `CREATE TABLE version(
   version     character varying (${stats[0].reduce((accu, value) => Math.max(accu, value[0].length), 0)}),
   registry    character varying (${stats[0].reduce((accu, value) => Math.max(accu, value[1].length), 0)}),
   serial      bigint,
@@ -110,11 +108,11 @@ const fetchAllStats = async (urls, db) => {
   UTCoffset   character (5),
   PRIMARY KEY (registry)
 )`,
-          insert: 'INSERT INTO version VALUES(?, ?, ?, ?, ?, ?, ?)'
-        },
-        undefined,
-        {
-          schema: `CREATE TABLE record (
+      insert: 'INSERT INTO version VALUES(?, ?, ?, ?, ?, ?, ?)'
+    },
+    undefined,
+    {
+      schema: `CREATE TABLE record(
   registry    character varying (${stats[0].reduce((accu, value) => Math.max(accu, value[1].length), 0)}),
   cc          character (2),
   type        character varying (4),
@@ -126,23 +124,25 @@ const fetchAllStats = async (urls, db) => {
   PRIMARY KEY (type, start),
   FOREIGN KEY (registry) REFERENCES version(registry)
 )`,
-          insert: 'INSERT OR REPLACE INTO record VALUES(?, ?, ?, ?, ?, ?, ?, ?)'
-        }
-      ]
+      insert: 'INSERT OR REPLACE INTO record VALUES(?, ?, ?, ?, ?, ?, ?, ?)'
+    }
+  ]
 
-      tables.forEach((table, index) => {
-        if (table === undefined) {
-          return
-        }
-        db.exec(table.schema)
-        const statement = db.prepare(table.insert)
-        stats[index].forEach(params => statement.run(params))
-        statement.finalize()
-      })
-
-      db.run('COMMIT', resolve)
+  tables.forEach((table, index) => {
+    if (table === undefined) {
+      return
+    }
+    console.log('==>', table.schema)
+    db.exec(table.schema)
+    const statement = db.prepare(table.insert)
+    console.log('==>', statement.sourceSQL)
+    stats[index].forEach(params => {
+      statement.run(...params)
     })
+    statement.close()
   })
+
+  db.exec('COMMIT')
 }
 
 const main = async () => {
@@ -152,7 +152,7 @@ const main = async () => {
 
   const filename = config.dest + '.db'
   fs.existsSync(filename) && fs.unlinkSync(filename)
-  const db = new sqlite3.Database(filename)
+  const db = new DatabaseSync(filename)
   await fetchAllStats(config.source, db)
   db.close()
 
